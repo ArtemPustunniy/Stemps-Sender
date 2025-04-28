@@ -1,8 +1,15 @@
 import asyncio
+import os
+
 from django.apps import AppConfig
 from telethon import TelegramClient
+from dotenv import load_dotenv
 
-from rassilka_tg_notifications.rassilka_tg_notifications.settings import API_ID, API_HASH, PHONE_NUMBER
+load_dotenv()
+
+API_ID = int(os.getenv('API_ID'))
+API_HASH = os.getenv('API_HASH')
+PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 
 # Сообщения
 FIRST_TOUCH_MESSAGE = """
@@ -20,9 +27,7 @@ SECOND_TOUCH_MESSAGE = """
 """
 
 # Данные отправителя (должны совпадать с tasks.py)
-
 SESSION_FILE = 'sender'
-
 
 class BotsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'

@@ -6,38 +6,59 @@ from datetime import timedelta, timezone as dt_timezone
 from django_celery_beat.models import PeriodicTask, ClockedSchedule
 import json
 
+
 class User(models.Model):
-    telegram_id = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=100, blank=True)
-    responded = models.BooleanField(default=False)
-    last_message_time = models.DateTimeField(null=True, blank=True)
+    telegram_id = models.CharField(max_length=50, unique=True, verbose_name="Telegram ID")
+    name = models.CharField(max_length=100, blank=True, verbose_name="Имя")
+    responded = models.BooleanField(default=False, verbose_name="Ответил")
+    last_message_time = models.DateTimeField(null=True, blank=True, verbose_name="Время последнего сообщения")
+
+    class Meta:
+        verbose_name = "Пользователь"
+        verbose_name_plural = "Пользователи"
 
     def __str__(self):
         return f"{self.name} ({self.telegram_id})"
 
+
 class Message(models.Model):
-    text = models.TextField()
-    is_second_touch = models.BooleanField(default=False)
+    text = models.TextField(verbose_name="Текст сообщения")
+    is_second_touch = models.BooleanField(default=False, verbose_name="Второе касание")
+
+    class Meta:
+        verbose_name = "Сообщение"
+        verbose_name_plural = "Сообщения"
 
     def __str__(self):
         return self.text[:50]
 
+
 class Schedule(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.ForeignKey(Message, on_delete=models.CASCADE)
-    scheduled_time = models.DateTimeField()
-    sent = models.BooleanField(default=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Пользователь")
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, verbose_name="Сообщение")
+    scheduled_time = models.DateTimeField(verbose_name="Время отправки")
+    sent = models.BooleanField(default=False, verbose_name="Отправлено")
+
+    class Meta:
+        verbose_name = "Расписание"
+        verbose_name_plural = "Расписания"
 
     def __str__(self):
-        return f"Message to {self.user} at {self.scheduled_time}"
+        return f"Сообщение для {self.user} на {self.scheduled_time}"
+
 
 class Settings(models.Model):
-    message_interval_minutes = models.IntegerField(default=6)
-    ban_freeze_hours = models.IntegerField(default=3)
-    second_touch_delay_hours = models.IntegerField(default=24)
+    message_interval_minutes = models.IntegerField(default=6, verbose_name="Интервал между сообщениями (минуты)")
+    ban_freeze_hours = models.IntegerField(default=3, verbose_name="Заморозка после бана (часы)")
+    second_touch_delay_minutes = models.IntegerField(default=1440, verbose_name="Задержка второго касания (минуты)")  # 1440 минут = 24 часа
+
+    class Meta:
+        verbose_name = "Настройка"
+        verbose_name_plural = "Настройки"
 
     def __str__(self):
-        return "Global Settings"
+        return "Глобальные настройки"
+
 
 @receiver(post_save, sender=User)
 def create_user_schedules(sender, instance, created, **kwargs):
@@ -98,7 +119,7 @@ def create_user_schedules(sender, instance, created, **kwargs):
             one_off=True
         )
 
-        second_touch_time = first_touch_time + timedelta(hours=settings.second_touch_delay_hours)
+        second_touch_time = first_touch_time + timedelta(minutes=settings.second_touch_delay_minutes)
         second_schedule = Schedule.objects.create(
             user=instance,
             message=second_touch_message,

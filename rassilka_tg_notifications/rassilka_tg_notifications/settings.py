@@ -7,9 +7,6 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
-API_ID = int(os.getenv('API_ID'))
-API_HASH = os.getenv('API_HASH')
-PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 
 DEBUG = True
 
@@ -22,6 +19,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'bots',
     'django_celery_beat',
 ]
@@ -41,7 +39,7 @@ ROOT_URLCONF = 'rassilka_tg_notifications.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -99,6 +97,9 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 CELERY_TIMEZONE = 'UTC'
+
+CELERY_BEAT_MAX_LOOP_INTERVAL = 10  # Максимальный интервал проверки в секундах
+
 CELERY_ENABLE_UTC = True
 
 # Logging

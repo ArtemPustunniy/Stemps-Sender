@@ -1,14 +1,20 @@
+import os
+
 from celery import shared_task
 from telethon import TelegramClient
-from .models import Schedule
+from .models import Schedule, User
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from telethon.errors import PeerIdInvalidError
+from django.utils import timezone
+from dotenv import load_dotenv
 
-from ..rassilka_tg_notifications.settings import API_ID, API_HASH
+load_dotenv()
+API_ID = int(os.getenv('API_ID'))
+API_HASH = os.getenv('API_HASH')
+PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 
 SESSION_FILE = 'sender'
-
 
 @shared_task
 def send_message(schedule_id):
@@ -19,6 +25,15 @@ def send_message(schedule_id):
         schedule = Schedule.objects.get(id=schedule_id)
         if schedule.sent:
             print(f"Message {schedule_id} already sent.")
+            return
+
+        # Проверяем, ответил ли пользователь
+        user = schedule.user
+        if user.responded and schedule.message.is_second_touch:
+            # Если пользователь ответил и это второе касание, помечаем расписание как завершённое и не отправляем
+            schedule.sent = True
+            schedule.save()
+            print(f"User {user.telegram_id} has already responded. Skipping second touch message.")
             return
 
         # Извлекаем все данные, которые могут потребовать доступ к базе данных
@@ -64,9 +79,11 @@ def send_message(schedule_id):
             future = executor.submit(run_telegram_task)
             future.result()  # Ждем завершения
 
-        # Обновляем статус отправки
+        # Обновляем статус отправки и время последнего сообщения
         schedule.sent = True
         schedule.save()
+        user.last_message_time = timezone.now()
+        user.save()
         print(f"Message {schedule_id} sent to {telegram_id}")
 
     except Exception as e:
