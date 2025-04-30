@@ -1,7 +1,6 @@
 import os
 import django
 
-# Инициализируем Django перед любыми импортами, связанными с Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rassilka_tg_notifications.settings')
 django.setup()
 
@@ -17,9 +16,9 @@ API_ID = int(os.getenv('API_ID'))
 API_HASH = os.getenv('API_HASH')
 SESSION_FILE = 'listener'
 
-# Оборачиваем операции с базой данных в sync_to_async
 get_user = sync_to_async(User.objects.get)
 save_user = sync_to_async(lambda user: user.save())
+
 
 async def handle_new_message(event):
     sender = await event.get_sender()
@@ -29,14 +28,12 @@ async def handle_new_message(event):
     print(f"Received message from {telegram_id}: {message_text}")
 
     try:
-        # Используем sync_to_async для получения пользователя
+
         user = await get_user(telegram_id=telegram_id)
         print(f"Found user: {user.telegram_id}, current responded: {user.responded}")
-        # Обновляем поле responded, если пользователь ответил
         if not user.responded:
             user.responded = True
             user.last_message_time = timezone.now()
-            # Используем sync_to_async для сохранения пользователя
             await save_user(user)
             print(f"User {telegram_id} responded. Updated responded=True.")
         else:
@@ -45,6 +42,7 @@ async def handle_new_message(event):
         print(f"User with telegram_id {telegram_id} not found.")
     except Exception as e:
         print(f"Error updating user {telegram_id}: {str(e)}")
+
 
 async def main():
     client = TelegramClient(SESSION_FILE, API_ID, API_HASH)

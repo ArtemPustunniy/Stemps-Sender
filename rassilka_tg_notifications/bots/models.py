@@ -75,20 +75,16 @@ class Bot(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        # Получаем настройки
         settings = Settings.objects.first()
         if not settings:
             settings = Settings.objects.create()
 
-        # Если бот забанен, устанавливаем время фриза
         if self.is_banned and not self.banned_until:
             self.banned_until = timezone.now() + timezone.timedelta(minutes=settings.ban_freeze_minutes)
             print(f"Bot banned until {self.banned_until}")
 
-            # Находим все запланированные, но не отправленные задачи
             schedules = Schedule.objects.filter(sent=False)
             for schedule in schedules:
-                # Если scheduled_time меньше banned_until, сдвигаем задачу
                 if schedule.scheduled_time < self.banned_until:
                     original_scheduled_time = schedule.scheduled_time
                     schedule.scheduled_time = self.banned_until
@@ -96,18 +92,14 @@ class Bot(models.Model):
                     schedule.clocked_schedule.save()
                     schedule.save()
                     print(f"Task {schedule.periodic_task.name} rescheduled from {original_scheduled_time} to {self.banned_until}")
-                # Если scheduled_time больше banned_until, но есть второе касание, нужно сохранить разницу
                 else:
-                    # Проверяем, есть ли первое касание для этого пользователя
                     first_touch = Schedule.objects.filter(
                         user=schedule.user,
                         message__is_second_touch=False,
                         sent=False
                     ).first()
                     if first_touch and schedule.message.is_second_touch:
-                        # Вычисляем разницу между первым и вторым касанием
                         time_diff = schedule.scheduled_time - first_touch.scheduled_time
-                        # Сдвигаем второе касание относительно нового времени первого
                         new_second_touch_time = first_touch.scheduled_time + time_diff
                         if new_second_touch_time < self.banned_until:
                             new_second_touch_time = self.banned_until
@@ -117,7 +109,6 @@ class Bot(models.Model):
                         schedule.save()
                         print(f"Second touch task {schedule.periodic_task.name} rescheduled to {new_second_touch_time} to maintain time difference with first touch")
 
-        # Если бан снят, очищаем banned_until
         elif not self.is_banned:
             self.banned_until = None
 
@@ -129,7 +120,6 @@ def create_user_schedules(sender, instance, created, **kwargs):
     if created:
         print(f"New user created: {instance.telegram_id}")
 
-        # Проверяем состояние бота
         bot = Bot.objects.first()
         if not bot:
             bot = Bot.objects.create(name="Main Bot")
@@ -145,7 +135,6 @@ def create_user_schedules(sender, instance, created, **kwargs):
             print("Messages not found, cannot schedule messages.")
             return
 
-        # Получаем текущее время в UTC
         now = timezone.now().astimezone(dt_timezone.utc)
         print(f"Current time in UTC: {now}")
 
@@ -153,7 +142,6 @@ def create_user_schedules(sender, instance, created, **kwargs):
             message__is_second_touch=False, sent=False
         ).order_by('-scheduled_time').first()
 
-        # Убедимся, что время в будущем (в UTC)
         if last_first_touch:
             last_first_touch_time_utc = last_first_touch.scheduled_time.astimezone(dt_timezone.utc)
             print(f"Last first touch time in UTC: {last_first_touch_time_utc}")
@@ -164,11 +152,9 @@ def create_user_schedules(sender, instance, created, **kwargs):
         else:
             first_touch_time = now + timedelta(minutes=2)
 
-        # Если разница меньше 2 минут, добавим еще 2 минуты
         if (first_touch_time - now).total_seconds() < 120:
             first_touch_time = now + timedelta(minutes=4)
 
-        # Учитываем состояние бота
         if bot.is_banned and bot.banned_until and bot.banned_until > first_touch_time:
             first_touch_time = bot.banned_until
 
@@ -198,7 +184,6 @@ def create_user_schedules(sender, instance, created, **kwargs):
         first_schedule.save()
 
         second_touch_time = first_touch_time + timedelta(minutes=settings.second_touch_delay_minutes)
-        # Учитываем состояние бота для второго касания
         if bot.is_banned and bot.banned_until and bot.banned_until > second_touch_time:
             second_touch_time = bot.banned_until + timedelta(minutes=settings.second_touch_delay_minutes - 2)
 
@@ -225,7 +210,6 @@ def create_user_schedules(sender, instance, created, **kwargs):
         second_schedule.clocked_schedule = clocked_second
         second_schedule.save()
 
-        # Показываем время в UTC для ясности
         first_touch_time_utc_log = first_touch_time.astimezone(dt_timezone.utc)
         second_touch_time_utc_log = second_touch_time.astimezone(dt_timezone.utc)
         print(f"Scheduled messages for user {instance.telegram_id}: first at {first_touch_time_utc_log} (UTC), second at {second_touch_time_utc_log} (UTC)")

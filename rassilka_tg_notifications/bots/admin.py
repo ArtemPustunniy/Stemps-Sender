@@ -16,19 +16,17 @@ class ScheduleAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Преобразуем scheduled_time в UTC для отображения
         if self.instance and self.instance.scheduled_time:
             self.initial['scheduled_time'] = self.instance.scheduled_time.astimezone(dt_timezone.utc)
 
-        # Изменяем метку поля на русском
         self.fields['scheduled_time'].label = 'Время отправки (UTC)'
 
     def clean_scheduled_time(self):
-        # Убедимся, что введенное время интерпретируется как UTC
         scheduled_time = self.cleaned_data['scheduled_time']
         if scheduled_time and scheduled_time.tzinfo:
             return scheduled_time.astimezone(dt_timezone.utc)
         return scheduled_time
+
 
 class UserAdmin(admin.ModelAdmin):
     list_display = ('telegram_id', 'name', 'responded', 'last_message_time')
@@ -36,10 +34,12 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('telegram_id', 'name')
     ordering = ('telegram_id',)
 
+
 class MessageAdmin(admin.ModelAdmin):
     list_display = ('text', 'is_second_touch')
     list_filter = ('is_second_touch',)
     search_fields = ('text',)
+
 
 class ScheduleAdmin(admin.ModelAdmin):
     form = ScheduleAdminForm
@@ -58,15 +58,17 @@ class ScheduleAdmin(admin.ModelAdmin):
     def delete_schedules(self, request, queryset):
         queryset.delete()
 
+
 class SettingsAdmin(admin.ModelAdmin):
     list_display = ('message_interval_minutes', 'ban_freeze_minutes', 'second_touch_delay_minutes')  # Исправили ban_freeze_hours на ban_freeze_minutes
+
 
 class BotAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_banned', 'banned_until')
     list_filter = ('is_banned',)
     search_fields = ('name',)
 
-# Классы админки для django-celery-beat
+
 class PeriodicTaskAdmin(admin.ModelAdmin):
     list_display = ('name', 'task', 'enabled')
     list_filter = ('enabled',)
@@ -77,19 +79,22 @@ class ClockedScheduleAdmin(admin.ModelAdmin):
     list_filter = ('clocked_time',)
     search_fields = ('clocked_time',)
 
+
 class CrontabScheduleAdmin(admin.ModelAdmin):
     list_display = ('minute', 'hour', 'day_of_week', 'day_of_month', 'month_of_year')
     search_fields = ('minute', 'hour')
+
 
 class IntervalScheduleAdmin(admin.ModelAdmin):
     list_display = ('every', 'period')
     search_fields = ('every', 'period')
 
+
 class SolarScheduleAdmin(admin.ModelAdmin):
     list_display = ('event', 'latitude', 'longitude')
     search_fields = ('event',)
 
-# Регистрируем модели напрямую через custom_admin_site
+
 custom_admin_site.register(User, UserAdmin)
 custom_admin_site.register(Message, MessageAdmin)
 custom_admin_site.register(Schedule, ScheduleAdmin)

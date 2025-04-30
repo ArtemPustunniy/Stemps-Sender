@@ -8,10 +8,9 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 app.autodiscover_tasks()
 
-# Настраиваем Celery Beat для частой проверки изменений
 app.conf.beat_schedule = {
     'check-tasks-every-10-seconds': {
         'task': 'django_celery_beat.schedulers:DatabaseScheduler',
-        'schedule': 10.0,  # Проверять каждые 10 секунд
+        'schedule': 10.0,
     },
 }
