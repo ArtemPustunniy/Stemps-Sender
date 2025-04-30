@@ -1,12 +1,13 @@
 from django.utils import timezone
 from datetime import timezone as dt_timezone
-from .models import User, Message, Schedule, Settings
+from .models import User, Message, Schedule, Settings, Bot
 from django import forms
 from .admin_site import custom_admin_site
 from django.contrib import admin
 from django.contrib.auth.models import User as AuthUser, Group
 from django_celery_beat.models import PeriodicTask, ClockedSchedule, CrontabSchedule, IntervalSchedule, SolarSchedule
 from django.contrib.auth.admin import UserAdmin as AuthUserAdmin, GroupAdmin
+
 
 class ScheduleAdminForm(forms.ModelForm):
     class Meta:
@@ -58,7 +59,12 @@ class ScheduleAdmin(admin.ModelAdmin):
         queryset.delete()
 
 class SettingsAdmin(admin.ModelAdmin):
-    list_display = ('message_interval_minutes', 'ban_freeze_hours', 'second_touch_delay_minutes')
+    list_display = ('message_interval_minutes', 'ban_freeze_minutes', 'second_touch_delay_minutes')  # Исправили ban_freeze_hours на ban_freeze_minutes
+
+class BotAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_banned', 'banned_until')
+    list_filter = ('is_banned',)
+    search_fields = ('name',)
 
 # Классы админки для django-celery-beat
 class PeriodicTaskAdmin(admin.ModelAdmin):
@@ -88,6 +94,7 @@ custom_admin_site.register(User, UserAdmin)
 custom_admin_site.register(Message, MessageAdmin)
 custom_admin_site.register(Schedule, ScheduleAdmin)
 custom_admin_site.register(Settings, SettingsAdmin)
+custom_admin_site.register(Bot, BotAdmin)
 custom_admin_site.register(PeriodicTask, PeriodicTaskAdmin)
 custom_admin_site.register(ClockedSchedule, ClockedScheduleAdmin)
 custom_admin_site.register(CrontabSchedule, CrontabScheduleAdmin)
