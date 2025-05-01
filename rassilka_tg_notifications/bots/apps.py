@@ -34,34 +34,4 @@ class BotsConfig(AppConfig):
     name = 'bots'
 
     def ready(self):
-        # Создание сообщений
-        from .models import Message
-        if not Message.objects.filter(text=FIRST_TOUCH_MESSAGE).exists():
-            Message.objects.create(text=FIRST_TOUCH_MESSAGE, is_second_touch=False)
-            print("First touch message created.")
-        if not Message.objects.filter(text=SECOND_TOUCH_MESSAGE).exists():
-            Message.objects.create(text=SECOND_TOUCH_MESSAGE, is_second_touch=True)
-            print("Second touch message created.")
-
-        # Проверка Telegram сессии
-        client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
-
-        async def check_session():
-            print("Checking Telegram session...")
-            await client.connect()
-            if not await client.is_user_authorized():
-                print(f"Session not found or invalid. Requesting code for {PHONE_NUMBER}")
-                await client.sign_in(phone=PHONE_NUMBER)
-                code = input(f"Enter the code sent to {PHONE_NUMBER}: ")
-                try:
-                    await client.sign_in(code=code)
-                    print("Telegram session created successfully!")
-                except Exception as e:
-                    print(f"Failed to create Telegram session: {str(e)}")
-                    await client.disconnect()
-                    return
-            else:
-                print("Telegram session already exists and is valid.")
-            await client.disconnect()
-
-        asyncio.run(check_session())
+        pass  # Убрали создание данных и проверку Telegram-сессии

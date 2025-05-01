@@ -19,7 +19,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'bots',
     'django_celery_beat',
 ]
@@ -57,7 +56,7 @@ WSGI_APPLICATION = 'rassilka_tg_notifications.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db_2.sqlite3',
     }
 }
 
@@ -97,7 +96,7 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 CELERY_TIMEZONE = 'UTC'
 
-CELERY_BEAT_MAX_LOOP_INTERVAL = 10
+CELERY_BEAT_MAX_LOOP_INTERVAL = 84460
 
 CELERY_ENABLE_UTC = True
 

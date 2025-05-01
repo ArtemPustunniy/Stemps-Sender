@@ -1,11 +1,9 @@
 import os
-from celery import shared_task
 from telethon import TelegramClient
-from .models import Schedule, User, Bot
+from .models import User, Bot
 from django.utils import timezone
 from concurrent.futures import ThreadPoolExecutor
-from telethon.errors import PeerIdInvalidError, SessionPasswordNeededError, FloodWaitError
-from celery.exceptions import Retry
+from telethon.errors import PeerIdInvalidError, FloodWaitError
 from dotenv import load_dotenv
 import asyncio
 
@@ -13,14 +11,12 @@ load_dotenv()
 API_ID = int(os.getenv('API_ID'))
 API_HASH = os.getenv('API_HASH')
 PHONE_NUMBER = os.getenv('PHONE_NUMBER')
-TWO_FACTOR_PASSWORD = os.getenv('TWO_FACTOR_PASSWORD')
 
 SESSION_FILE = 'sender'
 
 
-@shared_task(bind=True)
-def send_message(self, schedule_id):
-    print(f"Starting task send_message for schedule_id {schedule_id} at {timezone.now()}")
+def send_message(schedule):
+    print(f"Starting send_message for user {schedule.user.telegram_id} at {timezone.now()}")
 
     try:
         bot = Bot.objects.first()
@@ -35,24 +31,16 @@ def send_message(self, schedule_id):
             bot.save()
 
         if bot.is_banned and bot.banned_until and bot.banned_until > timezone.now():
-            delay = (bot.banned_until - timezone.now()).total_seconds()
-            print(f"Bot is banned until {bot.banned_until}. Retrying task after {delay} seconds.")
-            raise self.retry(eta=bot.banned_until)
-
-        schedule = Schedule.objects.get(id=schedule_id)
-        print(f"Schedule status: sent={schedule.sent}, scheduled_time={schedule.scheduled_time}")
-        if schedule.sent:
-            print(f"Message {schedule_id} already sent.")
-            return
+            print(f"Bot is banned until {bot.banned_until}. Skipping message.")
+            return False
 
         user = schedule.user
         print(f"User {user.telegram_id}: responded={user.responded}, is_second_touch={schedule.message.is_second_touch}, message_text='{schedule.message.text}'")
 
+        # Проверяем, ответил ли пользователь
         if schedule.message.is_second_touch and user.responded:
             print(f"User {user.telegram_id} has responded. Skipping second touch message.")
-            schedule.sent = True
-            schedule.save()
-            return
+            return True  # Возвращаем True, чтобы пометить задачу как выполненную
 
         telegram_id = int(schedule.user.telegram_id)
         message_text = schedule.message.text
@@ -67,11 +55,7 @@ def send_message(self, schedule_id):
 
                 async def send_telegram_message():
                     print("Connecting to Telegram...")
-                    try:
-                        await client.start(phone=PHONE_NUMBER, password=lambda: TWO_FACTOR_PASSWORD)
-                    except SessionPasswordNeededError:
-                        print("Two-factor authentication password required but not provided.")
-                        raise
+                    await client.start(phone=PHONE_NUMBER)
                     print(f"Sending message to {telegram_id}...")
 
                     try:
@@ -92,11 +76,10 @@ def send_message(self, schedule_id):
             future = executor.submit(run_telegram_task)
             future.result()
 
-        schedule.sent = True
-        schedule.save()
         user.last_message_time = timezone.now()
         user.save()
-        print(f"Message {schedule_id} sent to {telegram_id} at {timezone.now()}")
+        print(f"Message sent to {telegram_id} at {timezone.now()}")
+        return True
 
     except FloodWaitError as e:
         print(f"Flood wait error: {e.seconds} seconds. Bot is likely banned.")
@@ -105,11 +88,10 @@ def send_message(self, schedule_id):
             bot.is_banned = True
             bot.save()
             print(f"Bot marked as banned until {bot.banned_until}.")
-        raise self.retry(eta=timezone.now() + timezone.timedelta(seconds=e.seconds))
+        return False
     except PeerIdInvalidError:
         print(f"Error: The Telegram ID {telegram_id} is invalid or inaccessible. Marking message as sent.")
-        schedule.sent = True
-        schedule.save()
+        return True
     except Exception as e:
-        print(f"Error sending message {schedule_id}: {str(e)} at {timezone.now()}")
-        raise
+        print(f"Error sending message: {str(e)} at {timezone.now()}")
+        return False
