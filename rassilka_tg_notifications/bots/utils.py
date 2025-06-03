@@ -25,7 +25,7 @@ def create_schedules():
 
     current_time = timezone.now()
     for i, user in enumerate(users):
-        account = accounts[i % len(accounts)]  # Распределяем пользователей по аккаунтам
+        account = accounts[i % len(accounts)]
         scheduled_time = current_time + timedelta(minutes=settings.message_interval_minutes * i)
         Schedule.objects.create(
             user=user,

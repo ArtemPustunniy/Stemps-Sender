@@ -1,0 +1,10 @@
+services:
+  db:
+    image: postgres:17
+    container_name: stemps_bot
+    environment:
+      POSTGRES_DB: stemps_bot_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"

@@ -37,14 +37,13 @@ def send_message(schedule):
         user = schedule.user
         print(f"User {user.telegram_id}: responded={user.responded}, is_second_touch={schedule.message.is_second_touch}, message_text='{schedule.message.text}'")
 
-        # Проверяем, ответил ли пользователь
         if schedule.message.is_second_touch and user.responded:
             print(f"User {user.telegram_id} has responded. Skipping second touch message.")
-            return True  # Возвращаем True, чтобы пометить задачу как выполненную
+            return True
 
-        telegram_id = int(schedule.user.telegram_id)
+        username = user.name
         message_text = schedule.message.text
-        print(f"Sending message to {telegram_id}: {message_text}")
+        print(f"Sending message to {username}: {message_text}")
 
         def run_telegram_task():
             loop = asyncio.new_event_loop()
@@ -54,20 +53,30 @@ def send_message(schedule):
                 client = TelegramClient(SESSION_FILE, API_ID, API_HASH, loop=loop)
 
                 async def send_telegram_message():
-                    print("Connecting to Telegram...")
-                    await client.start(phone=PHONE_NUMBER)
-                    print(f"Sending message to {telegram_id}...")
+                    print(f"Connecting to Telegram for {username}...")
+                    await client.connect()
+                    if not await client.is_user_authorized():
+                        await client.start(phone=PHONE_NUMBER)
+                        print("Authorized successfully.")
 
+                    if not username.startswith('@'):
+                        username_with_at = '@' + username
+                    else:
+                        username_with_at = username
+
+                    print(f"Fetching entity for {username_with_at}...")
                     try:
-                        entity = await client.get_input_entity(telegram_id)
-                        print(f"Found entity: {entity}")
+                        entity = await client.get_entity(username_with_at)
+                        print(f"Entity found: {entity}")
                     except PeerIdInvalidError:
-                        print(f"Error: The Telegram ID {telegram_id} is invalid or inaccessible.")
-                        raise ValueError(f"Cannot access user with ID {telegram_id}")
+                        print(f"Error: The username {username_with_at} is invalid or inaccessible.")
+                        raise ValueError(f"Cannot access user with username {username_with_at}")
 
-                    await client.send_message(telegram_id, message_text)
+                    print(f"Sending message to {username_with_at}...")
+                    await client.send_message(entity, message_text)
                     print("Message sent, disconnecting...")
                     await client.disconnect()
+
                 loop.run_until_complete(send_telegram_message())
             finally:
                 loop.close()
@@ -78,7 +87,7 @@ def send_message(schedule):
 
         user.last_message_time = timezone.now()
         user.save()
-        print(f"Message sent to {telegram_id} at {timezone.now()}")
+        print(f"Message sent to {username} at {timezone.now()}")
         return True
 
     except FloodWaitError as e:
@@ -86,11 +95,12 @@ def send_message(schedule):
         bot = Bot.objects.first()
         if bot:
             bot.is_banned = True
+            bot.banned_until = timezone.now() + timezone.timedelta(seconds=e.seconds)
             bot.save()
             print(f"Bot marked as banned until {bot.banned_until}.")
         return False
-    except PeerIdInvalidError:
-        print(f"Error: The Telegram ID {telegram_id} is invalid or inaccessible. Marking message as sent.")
+    except ValueError as e:
+        print(f"Error: {str(e)} at {timezone.now()}")
         return True
     except Exception as e:
         print(f"Error sending message: {str(e)} at {timezone.now()}")

@@ -1,6 +1,6 @@
 from django.utils import timezone
 from datetime import timezone as dt_timezone
-from .models import User, Message, FirstTouchSchedule, SecondTouchSchedule, Settings, Bot
+from .models import User, Message, FirstTouchSchedule, SecondTouchSchedule, Settings, Bot, PendingUser
 from django import forms
 from .admin_site import custom_admin_site
 from django.contrib import admin
@@ -23,6 +23,13 @@ class ScheduleAdminForm(forms.ModelForm):
         return scheduled_time
 
 
+class PendingUserAdmin(admin.ModelAdmin):
+    list_display = ('telegram_id', 'name', 'created_at', 'is_processed')
+    list_filter = ('is_processed',)
+    search_fields = ('telegram_id', 'name')
+    ordering = ('created_at',)
+
+
 class UserAdmin(admin.ModelAdmin):
     list_display = ('telegram_id', 'name', 'responded', 'last_message_time')
     list_filter = ('responded',)
@@ -38,7 +45,7 @@ class MessageAdmin(admin.ModelAdmin):
 
 class FirstTouchScheduleAdmin(admin.ModelAdmin):
     form = ScheduleAdminForm
-    list_display = ('user', 'message', 'scheduled_time_utc', 'sent')
+    list_display = ('user', 'message', 'scheduled_time_utc', 'original_scheduled_time_utc', 'sent')
     list_filter = ('sent', 'scheduled_time')
     search_fields = ('user__telegram_id', 'message__text')
     ordering = ('scheduled_time',)
@@ -48,6 +55,13 @@ class FirstTouchScheduleAdmin(admin.ModelAdmin):
         return obj.scheduled_time.astimezone(dt_timezone.utc)
 
     scheduled_time_utc.short_description = 'Время добавления (UTC)'
+
+    def original_scheduled_time_utc(self, obj):
+        if obj.original_scheduled_time:
+            return obj.original_scheduled_time.astimezone(dt_timezone.utc)
+        return None
+
+    original_scheduled_time_utc.short_description = 'Изначальное время (UTC)'
 
     @admin.action(description="Удалить выбранные расписания первого касания")
     def delete_schedules(self, request, queryset):
@@ -56,7 +70,7 @@ class FirstTouchScheduleAdmin(admin.ModelAdmin):
 
 class SecondTouchScheduleAdmin(admin.ModelAdmin):
     form = ScheduleAdminForm
-    list_display = ('user', 'message', 'scheduled_time_utc', 'sent')
+    list_display = ('user', 'message', 'scheduled_time_utc', 'original_scheduled_time_utc', 'sent')
     list_filter = ('sent', 'scheduled_time')
     search_fields = ('user__telegram_id', 'message__text')
     ordering = ('scheduled_time',)
@@ -67,13 +81,20 @@ class SecondTouchScheduleAdmin(admin.ModelAdmin):
 
     scheduled_time_utc.short_description = 'Время добавления (UTC)'
 
+    def original_scheduled_time_utc(self, obj):
+        if obj.original_scheduled_time:
+            return obj.original_scheduled_time.astimezone(dt_timezone.utc)
+        return None
+
+    original_scheduled_time_utc.short_description = 'Изначальное время (UTC)'
+
     @admin.action(description="Удалить выбранные расписания второго касания")
     def delete_schedules(self, request, queryset):
         queryset.delete()
 
 
 class SettingsAdmin(admin.ModelAdmin):
-    list_display = ('message_interval_minutes', 'ban_freeze_minutes', 'second_touch_delay_minutes')
+    list_display = ('message_interval_minutes', 'ban_freeze_minutes', 'second_touch_delay_minutes', 'admin_telegram_id')
 
 
 class BotAdmin(admin.ModelAdmin):
@@ -82,6 +103,7 @@ class BotAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+custom_admin_site.register(PendingUser, PendingUserAdmin)
 custom_admin_site.register(User, UserAdmin)
 custom_admin_site.register(Message, MessageAdmin)
 custom_admin_site.register(FirstTouchSchedule, FirstTouchScheduleAdmin)

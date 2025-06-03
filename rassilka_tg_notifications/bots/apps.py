@@ -26,12 +26,12 @@ SECOND_TOUCH_MESSAGE = """
 Чтобы лишний раз не дёргала, не подскажете кто в вашей команде отвечает за обучение сотрудников?
 """
 
-# Данные отправителя (должны совпадать с tasks.py)
 SESSION_FILE = 'sender'
+
 
 class BotsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'bots'
 
     def ready(self):
-        pass  # Убрали создание данных и проверку Telegram-сессии
+        pass
