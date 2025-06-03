@@ -63,11 +63,11 @@ WSGI_APPLICATION = 'rassilka_tg_notifications.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'stemps_bot_db',  # Имя базы данных из docker-compose
-        'USER': 'postgres',       # Пользователь
-        'PASSWORD': 'postgres',   # Пароль
-        'HOST': 'localhost',      # Для хоста используем localhost
-        'PORT': '5433',           # Порт, который мапится на хост (5433)
+        'NAME': 'stemps_bot_db',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5433',
     }
 }
 

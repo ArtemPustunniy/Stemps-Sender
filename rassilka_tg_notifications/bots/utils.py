@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger('bots')
 
+
 def create_schedules():
     settings = Settings.objects.first()
     if not settings:

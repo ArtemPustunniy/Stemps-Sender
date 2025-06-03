@@ -1,6 +1,6 @@
 import os
 from telethon import TelegramClient
-from .models import User, Bot
+from .models import Bot
 from django.utils import timezone
 from concurrent.futures import ThreadPoolExecutor
 from telethon.errors import PeerIdInvalidError, FloodWaitError

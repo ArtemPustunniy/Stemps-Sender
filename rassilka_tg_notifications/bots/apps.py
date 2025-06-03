@@ -1,8 +1,6 @@
-import asyncio
 import os
 
 from django.apps import AppConfig
-from telethon import TelegramClient
 from dotenv import load_dotenv
 
 load_dotenv()

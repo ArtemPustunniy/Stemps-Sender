@@ -11,6 +11,7 @@ API_HASH = os.getenv('API_HASH')
 PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 SESSION_FILE = 'sender'
 
+
 class Command(BaseCommand):
     help = 'Initialize or verify Telegram session'
 

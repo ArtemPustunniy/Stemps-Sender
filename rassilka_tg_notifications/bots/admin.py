@@ -1,4 +1,3 @@
-from django.utils import timezone
 from datetime import timezone as dt_timezone
 from .models import User, Message, FirstTouchSchedule, SecondTouchSchedule, Settings, Bot, PendingUser
 from django import forms
